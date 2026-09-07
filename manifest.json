@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.matheusmedrado.jsonarchy",
+  "name": "JSONarchy",
+  "version": "0.1.0",
+  "author": "matheusmedrado",
+  "license": "MIT",
+  "description": "Visualize JSON as an interactive node graph, JSON Crack style, right inside the Omarchy shell.",
+  "kinds": [
+    "service",
+    "overlay",
+    "bar-widget"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "Service.qml",
+    "overlay": "Overlay.qml",
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "JSONarchy",
+    "description": "JSON graph explorer. Left click opens, right click loads the clipboard.",
+    "category": "Development",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "JSONarchy",
+  "version": "0.1.0",
+  "active": true,
+  "rating": 4.8,
+  "license": null,
+  "tags": ["omarchy", "quickshell", "json", "graph"],
+  "author": { "name": "Matheus Medrado", "github": "matheusmedrado", "location": { "city": "São Paulo", "country": "BR" } },
+  "users": [
+    { "id": 1, "name": "Ada", "roles": ["admin", "dev"], "address": { "street": "1 Analytical Engine Rd", "zip": "00001" } },
+    { "id": 2, "name": "Linus", "roles": ["dev"], "address": { "street": "Kernel St 2", "zip": "19910" } },
+    { "id": 3, "name": "Grace", "roles": [], "address": {} }
+  ],
+  "settings": { "theme": "tokyo-night", "font": { "family": "CaskaydiaMono", "size": 12 }, "features": { "search": true, "collapse": true, "export": false } }
+}

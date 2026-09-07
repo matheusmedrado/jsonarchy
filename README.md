@@ -1,0 +1,108 @@
+# JSONarchy
+
+JSON Crack for the [Omarchy](https://omarchy.org) shell. Paste, drop, or open a
+JSON document and explore it as a graph from your bar.
+
+![JSONarchy](preview.png)
+
+- Objects and arrays become nodes, primitives are rows, edges link parents to children
+- Compact popup under the bar icon, or full screen with `F11`
+- Search keys and values, collapse subtrees, inspect any node's path and value
+- Editor with syntax highlighting and live re-parse
+- Export the graph as PNG or SVG
+- Native Quickshell/QML, themed by your Omarchy theme, no web view, no network
+
+## Install
+
+```sh
+omarchy plugin add https://github.com/matheusmedrado/jsonarchy --enable
+```
+
+That adds a `{..}` icon to the bar. Left click opens JSONarchy, right click
+loads the clipboard first. Move it like any other widget:
+
+```sh
+omarchy plugin enable io.github.matheusmedrado.jsonarchy right --before omarchy.clipboard
+```
+
+## Usage
+
+Click the icon, then paste JSON into the editor, press `Ctrl+O` to open a
+file, `Ctrl+Shift+V` to load the clipboard, or drop a file onto the editor.
+Press `?` inside JSONarchy for the full key list.
+
+| Key | Action |
+|-----|--------|
+| `Esc` | Close help, clear search, deselect, close |
+| `F11` | Compact popup / full screen |
+| `Ctrl+O` | Open a file |
+| `Ctrl+Shift+V` | Load the clipboard |
+| `Ctrl+Shift+F` | Format the document |
+| `Ctrl+F` | Search. `Enter` / `Shift+Enter` cycle matches |
+| `Ctrl+E` | Show or hide the editor |
+| `Ctrl+L` | Left-to-right / top-to-bottom layout |
+| `Ctrl+0` | Fit graph to view |
+| `Ctrl+Shift+E` / `Ctrl+Shift+C` | Expand all / collapse all |
+| `Ctrl+S` / `Ctrl+Shift+S` | Export PNG / SVG |
+| `?` | All keys and commands |
+
+Mouse and trackpad: two-finger scroll pans, pinch zooms, wheel zooms, drag
+pans. Click a node to inspect it, double-click to collapse or expand it.
+
+### Scripting
+
+```sh
+omarchy-shell jsonarchy toggle
+omarchy-shell jsonarchy exportPng           # or exportSvg
+omarchy-shell shell summon io.github.matheusmedrado.jsonarchy '{"file": "/path/data.json"}'
+omarchy-shell shell summon io.github.matheusmedrado.jsonarchy '{"clipboard": true}'
+omarchy-shell shell summon io.github.matheusmedrado.jsonarchy '{"text": "{\"a\": 1}", "size": "full"}'
+```
+
+Payload keys: `file`, `text`, `clipboard`, `direction` (`LR` or `TB`),
+`size` (`compact` or `full`), `show` (open without toggling).
+
+Suggested Hyprland binding for `~/.config/hypr/bindings.conf`:
+
+```
+bindd = SUPER SHIFT, J, JSONarchy, exec, omarchy-shell shell toggle io.github.matheusmedrado.jsonarchy '{}'
+```
+
+## Notes
+
+- Window size, layout direction, and editor visibility are remembered in
+  `~/.local/state/omarchy/jsonarchy.json`.
+- Exports go where Omarchy screenshots go (`~/Pictures` by default). PNG
+  exports are also copied to the clipboard.
+- Documents over 2500 nodes are auto-collapsed below the deepest depth that
+  fits; expand by hand or search to reveal.
+- Requires `wl-clipboard`, which ships with Omarchy. Reads the files you open;
+  writes only the state file above, exports, and the clipboard on request.
+
+## Development
+
+```sh
+git clone https://github.com/matheusmedrado/jsonarchy ~/JSONarchy
+ln -s ~/JSONarchy ~/.config/omarchy/plugins/io.github.matheusmedrado.jsonarchy
+omarchy plugin enable io.github.matheusmedrado.jsonarchy
+./dev-reload.sh '{"file": "'"$PWD"'/tests/sample.json"}'   # tests, validate, restart shell, summon
+```
+
+The shell does not reload QML from a symlinked plugin on its own, hence the
+restart in `dev-reload.sh`.
+
+| Path | Purpose |
+|------|---------|
+| `Service.qml` | Document state, parsing, layout, search, loading, preferences |
+| `Panel.qml` | Bar icon and the compact popup |
+| `Overlay.qml` | Full-screen surface |
+| `components/Workspace.qml` | Shared UI: header, editor, graph, inspector, footer, help |
+| `components/GraphView.qml` | Pan/zoom viewport, edge shapes, layout tween |
+| `Model.js` | Graph building, tree layout, search (pure JS, tested) |
+| `components/Highlight.js` | JSON tokenizer and accent-derived palette |
+| `components/Export.js` | SVG writer |
+| `tests/` | `node tests/model.test.js`, `highlight.test.js`, `export.test.js` |
+
+## License
+
+[MIT](LICENSE)

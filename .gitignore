@@ -1,0 +1,5 @@
+# editor and OS noise
+.DS_Store
+*.swp
+*~
+.lavish/
