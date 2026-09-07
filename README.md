@@ -100,8 +100,9 @@ bindd = SUPER SHIFT, J, JSONarchy, exec, omarchy-shell shell toggle io.github.ma
 
 ## Development
 
+Clone this repository to a folder of your choice (say `~/JSONarchy`), then:
+
 ```sh
-git clone https://github.com/matheusmedrado/jsonarchy ~/JSONarchy
 ln -s ~/JSONarchy ~/.config/omarchy/plugins/io.github.matheusmedrado.jsonarchy
 omarchy plugin enable io.github.matheusmedrado.jsonarchy
 ./dev-reload.sh '{"file": "'"$PWD"'/tests/sample.json"}'   # tests, validate, restart shell, summon
