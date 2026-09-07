@@ -25,6 +25,23 @@ loads the clipboard first. Move it like any other widget:
 omarchy plugin enable io.github.matheusmedrado.jsonarchy right --before omarchy.clipboard
 ```
 
+### Uninstall
+
+```sh
+omarchy plugin remove io.github.matheusmedrado.jsonarchy
+rm -f ~/.local/state/omarchy/jsonarchy.json   # optional: saved preferences
+```
+
+Removing the plugin takes the icon off the bar and deletes the plugin
+folder. Nothing else on the system is touched.
+
+### Dependencies
+
+Everything ships with Omarchy: Quickshell, `wl-clipboard` (clipboard reads
+and PNG copy), `omarchy file select` (the desktop file chooser), and
+`omarchy notification send` plus `xdg-open` (export notifications). No
+network access, no background processes, no elevated privileges.
+
 ## Usage
 
 Click the icon, then paste JSON into the editor, press `Ctrl+O` to open a
@@ -76,8 +93,10 @@ bindd = SUPER SHIFT, J, JSONarchy, exec, omarchy-shell shell toggle io.github.ma
   exports are also copied to the clipboard.
 - Documents over 2500 nodes are auto-collapsed below the deepest depth that
   fits; expand by hand or search to reveal.
-- Requires `wl-clipboard`, which ships with Omarchy. Reads the files you open;
-  writes only the state file above, exports, and the clipboard on request.
+- Reads only the files you open. Writes only the state file above, exports
+  in your Pictures directory, and the clipboard when you ask for it. Enabling
+  adds the bar entry to `shell.json` through the standard plugin mechanism;
+  no other user configuration is modified.
 
 ## Development
 
