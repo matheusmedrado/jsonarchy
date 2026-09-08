@@ -62,6 +62,7 @@ Rectangle {
       case "number": return theme.numberValue
       case "boolean": return theme.booleanValue
       case "null": return theme.nullValue
+      case "truncated": return theme.muted
       default: return theme.text
     }
   }

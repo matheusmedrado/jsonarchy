@@ -16,7 +16,7 @@ set -euo pipefail
 PLUGIN_ID="io.github.matheusmedrado.jsonarchy"
 HERE="$(dirname "$(readlink -f "$0")")"
 
-node "$HERE/tests/model.test.js" >/dev/null
+for t in model highlight export read-bounded; do node "$HERE/tests/$t.test.js" >/dev/null; done
 omarchy plugin validate "$HERE"
 omarchy-restart-shell
 for _ in $(seq 1 40); do

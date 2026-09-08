@@ -108,6 +108,20 @@ Item {
 
   onMetricsChanged: relayout()
 
+  // ---- input limits ----------------------------------------------------------
+
+  // Every ingestion path (file, clipboard, summon payload, editor) is capped
+  // at this many bytes before anything is parsed; the editor additionally
+  // refuses to display documents above maxEditorChars and shows the graph
+  // only. Both are documented in the README.
+  readonly property int maxInputBytes: 1024 * 1024
+  readonly property int maxEditorChars: 512 * 1024
+  readonly property string readerScript: String(Qt.resolvedUrl("bin/read-bounded.sh")).replace(/^file:\/\//, "")
+
+  function tooLargeMessage(what, size) {
+    return what + " is " + (size / (1024 * 1024)).toFixed(1) + " MiB; the limit is " + (maxInputBytes / (1024 * 1024)) + " MiB."
+  }
+
   // ---- payloads ------------------------------------------------------------
 
   // Applies a summon payload and returns it parsed. Recognised keys:
@@ -119,7 +133,9 @@ Item {
     try { payload = JSON.parse(payloadJson || "{}") || {} } catch (e) { payload = {} }
     var loaded = false
     if (typeof payload.text === "string") {
-      loadText(payload.text, "payload"); loaded = true
+      if (payload.text.length > doc.maxInputBytes) doc.parseError = tooLargeMessage("Payload text", payload.text.length)
+      else loadText(payload.text, "payload")
+      loaded = true
     } else if (typeof payload.file === "string" && payload.file.length > 0) {
       loadFile(payload.file); loaded = true
     } else if (payload.clipboard === true) {
@@ -164,27 +180,30 @@ Item {
     }
   }
 
-  // A FileView only performs its blocking read on first access and hands
-  // back the same contents after a path change, so every read gets a fresh
-  // instance.
-  Component {
-    id: fileReader
-    FileView {
-      preload: false
-      blockLoading: true
-      printErrors: false
-    }
+  // Files are read by bin/read-bounded.sh in a child process: regular
+  // files only, at most maxInputBytes, never a device, FIFO or directory,
+  // and never on the shell's thread. A wall-clock timeout backs that up.
+  function loadFile(path) {
+    if (fileReadProc.running) { doc.parseError = "A file is already being read."; return }
+    fileReadProc.target = path
+    fileReadProc.running = true
   }
 
-  function loadFile(path) {
-    var reader = fileReader.createObject(doc, { path: path })
-    var text = reader ? reader.text() : ""
-    if (reader) reader.destroy()
-    if (!text || text.length === 0) {
-      doc.parseError = "Could not read " + path
-      return
+  Process {
+    id: fileReadProc
+    property string target: ""
+    command: ["timeout", "10", "sh", doc.readerScript, target, String(doc.maxInputBytes)]
+    stdout: StdioCollector { id: fileReadOut; waitForEnd: true }
+    stderr: StdioCollector { id: fileReadErr; waitForEnd: true }
+    onExited: function(exitCode) {
+      var text = String(fileReadOut.text || "")
+      var why = String(fileReadErr.text || "").trim()
+      if (exitCode === 4) doc.parseError = "File is too large (" + why.replace(/^too large: /, "") + ")."
+      else if (exitCode === 3) doc.parseError = "Not a regular file: " + fileReadProc.target
+      else if (exitCode === 124) doc.parseError = "Timed out reading " + fileReadProc.target
+      else if (exitCode === 0) doc.parseError = "File is empty: " + fileReadProc.target
+      else doc.parseError = "Could not read " + fileReadProc.target + (why ? " (" + why + ")" : "")
     }
-    loadText(text, path)
   }
 
   // Qt's Wayland clipboard is only readable once a surface has focus, which
@@ -201,6 +220,10 @@ Item {
       if (force) doc.parseError = "Clipboard is empty."
       return
     }
+    if (text.length > doc.maxInputBytes) {
+      if (force) doc.parseError = "Clipboard text exceeds the " + (doc.maxInputBytes / (1024 * 1024)) + " MiB limit."
+      return
+    }
     if (!force) {
       var probe = Model.parseText(text)
       if (!probe.ok) return
@@ -212,7 +235,9 @@ Item {
   Process {
     id: clipboardReader
     property bool force: false
-    command: ["wl-paste", "--no-newline", "--type", "text"]
+    // head stops reading one byte past the limit, so an enormous clipboard
+    // costs at most maxInputBytes + 1 of buffer and is then rejected.
+    command: ["timeout", "10", "sh", "-c", "wl-paste --no-newline --type text | head -c \"$1\"", "sh", String(doc.maxInputBytes + 1)]
     stdout: StdioCollector {
       id: clipboardOut
       waitForEnd: true
@@ -274,11 +299,20 @@ Item {
     if (next === doc.text) return
     doc.text = next
     doc.sourceLabel = ""
+    if (next.length > doc.maxInputBytes) {
+      parseDebounce.stop()
+      doc.parseError = tooLargeMessage("Document", next.length)
+      return
+    }
     parseDebounce.restart()
   }
 
   function reparseNow() {
     parseDebounce.stop()
+    if (doc.text.length > doc.maxInputBytes) {
+      doc.parseError = tooLargeMessage("Document", doc.text.length)
+      return
+    }
     var result = Model.parseText(doc.text)
     if (result.empty) {
       doc.parseError = ""
@@ -395,6 +429,7 @@ Item {
     if (doc.exportNotice) return doc.exportNotice
     if (!doc.graph) return doc.parseError ? doc.parseError : "No document"
     var parts = [doc.visibleCount + " of " + doc.totalNodes + " nodes"]
+    if (doc.graph.truncated > 0) parts.push("truncated: " + doc.graph.truncated + " containers beyond the " + Model.MAX_TOTAL_NODES + " node / depth " + Model.MAX_DEPTH + " budget")
     if (doc.graph.autoCollapsedDepth >= 0) parts.push("large document, collapsed below depth " + doc.graph.autoCollapsedDepth)
     if (doc.sourceLabel) parts.push(doc.sourceLabel)
     return parts.join("  ·  ")

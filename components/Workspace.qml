@@ -125,6 +125,13 @@ FocusScope {
   function syncEditor() {
     if (!doc) return
     textDirty = false
+    if (doc.text.length > doc.maxEditorChars) {
+      // Too big for a TextEdit to lay out comfortably: graph only.
+      editor.notice = "Document is " + (doc.text.length / (1024 * 1024)).toFixed(1) + " MiB, above the " + (doc.maxEditorChars / (1024 * 1024)) + " MiB editor limit. The graph is still available."
+      if (editor.text !== "") editor.setText("")
+      return
+    }
+    editor.notice = ""
     if (editor.text !== doc.text) editor.setText(doc.text)
   }
 
@@ -431,7 +438,7 @@ FocusScope {
         statusText: root.doc ? root.doc.parseError : ""
         statusIsError: root.doc ? root.doc.parseError.length > 0 : false
         syntax: root.syntax
-        onTextEdited: if (root.doc) root.doc.editText(editor.text)
+        onTextEdited: if (root.doc && editor.notice === "") root.doc.editText(editor.text)
         onFileDropped: function(path) { if (root.doc) root.doc.loadFile(path) }
       }
 

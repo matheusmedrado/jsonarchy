@@ -25,6 +25,9 @@ Item {
   readonly property bool highlighting: syntax !== null && highlightHtml.length > 0
   readonly property int maxSliceChars: 40000
 
+  // Shown instead of the placeholder when the document is not editable here.
+  property string notice: ""
+
   signal textEdited()
   signal fileDropped(string path)
 
@@ -141,6 +144,7 @@ Item {
       font.pixelSize: root.fontSize
       wrapMode: TextEdit.NoWrap
       selectByMouse: true
+      readOnly: root.notice !== ""
       persistentSelection: false
       textFormat: TextEdit.PlainText
       tabStopDistance: root.fontSize * 2
@@ -151,7 +155,7 @@ Item {
         visible: area.text.length === 0
         anchors.fill: parent
         anchors.margins: Style.spacing.md
-        text: "Paste JSON here.\n\nCtrl+Shift+V loads the clipboard."
+        text: root.notice !== "" ? root.notice : "Paste JSON here.\n\nCtrl+Shift+V loads the clipboard."
         textFormat: Text.PlainText
         color: theme.muted
         font.family: root.fontFamily

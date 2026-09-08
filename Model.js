@@ -12,6 +12,12 @@
 // array members become child nodes joined to the parent by an edge.
 
 var MAX_VISIBLE_NODES = 2500
+// Hard budgets for the graph itself. Beyond these, containers are shown as
+// a single "{…}" / "[…]" row and graph.truncated reports how many were cut,
+// so a pathological document can never make the builder recurse without
+// bound or allocate without limit.
+var MAX_TOTAL_NODES = 20000
+var MAX_DEPTH = 200
 var VALUE_MAX_CHARS = 48
 var KEY_MAX_CHARS = 32
 var INSPECT_MAX_CHARS = 20000
@@ -70,6 +76,16 @@ function describeParseError(e, text) {
 function buildGraph(value) {
   var nodes = []
   var byId = {}
+  var truncated = 0
+
+  function overBudget(depth) {
+    return nodes.length >= MAX_TOTAL_NODES || depth >= MAX_DEPTH
+  }
+
+  function placeholderRow(childTitle, child) {
+    truncated += 1
+    return { key: childTitle, text: Array.isArray(child) ? "[…]" : "{…}", type: "truncated" }
+  }
 
   function makeNode(key, title, path, parentId, depth, kind, v) {
     var node = {
@@ -118,6 +134,10 @@ function buildGraph(value) {
       var childType = typeOf(child)
 
       if (isContainer(child)) {
+        if (overBudget(depth + 1)) {
+          node.rows.push(placeholderRow(truncate(childTitle, KEY_MAX_CHARS), child))
+          continue
+        }
         node.childIds.push(visit(child, childKey, childTitle, childPath, node.id, depth + 1, childIsIndex))
       } else {
         var full = formatValue(child, childType)
@@ -136,7 +156,7 @@ function buildGraph(value) {
   }
 
   visit(value, "", "root", "$", -1, 0, false)
-  var graph = { nodes: nodes, rootId: 0 }
+  var graph = { nodes: nodes, rootId: 0, truncated: truncated }
   autoCollapse(graph)
   return graph
 }

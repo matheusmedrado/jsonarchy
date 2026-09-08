@@ -5,7 +5,7 @@ const vm = require("vm")
 const assert = require("assert")
 
 const src = fs.readFileSync(path.join(__dirname, "..", "Model.js"), "utf8").replace(".pragma library", "")
-const Model = vm.runInThisContext("(function(){" + src + "\nreturn { parseText, buildGraph, layout, search, visibleNodes, toggleCollapsed, reveal, inspectText, badgeFor, collapseToDepth, expandAll, prettyPrint, MAX_VISIBLE_NODES } })")()
+const Model = vm.runInThisContext("(function(){" + src + "\nreturn { parseText, buildGraph, layout, search, visibleNodes, toggleCollapsed, reveal, inspectText, badgeFor, collapseToDepth, expandAll, prettyPrint, MAX_VISIBLE_NODES, MAX_TOTAL_NODES, MAX_DEPTH } })")()
 
 const metrics = { charWidth: 7, rowHeight: 18, headerHeight: 24, paddingX: 10, paddingY: 6, minWidth: 80, maxWidth: 420 }
 const opts = { direction: "LR", gapMain: 60, gapCross: 20, metrics }
@@ -109,6 +109,26 @@ test("huge documents auto-collapse below the node budget", () => {
   assert.ok(g.nodes.length > Model.MAX_VISIBLE_NODES)
   assert.ok(Model.visibleNodes(g).length <= Model.MAX_VISIBLE_NODES)
   assert.ok(g.autoCollapsedDepth >= 0)
+})
+
+test("node budget caps the graph and reports truncation", () => {
+  const wide = {}
+  for (let i = 0; i < Model.MAX_TOTAL_NODES + 500; i++) wide["k" + i] = { v: i }
+  const g = Model.buildGraph(wide)
+  assert.ok(g.nodes.length <= Model.MAX_TOTAL_NODES)
+  assert.ok(g.truncated >= 500)
+  assert.ok(g.nodes[0].rows.some(r => r.type === "truncated" && r.text === "{…}"))
+})
+
+test("depth budget stops recursion on deeply nested input", () => {
+  let deep = 1
+  for (let i = 0; i < 5000; i++) deep = [deep]
+  const g = Model.buildGraph(deep)
+  assert.ok(g.nodes.length <= Model.MAX_DEPTH + 1)
+  assert.strictEqual(g.truncated, 1)
+  const leafiest = g.nodes[g.nodes.length - 1]
+  assert.ok(leafiest.rows.some(r => r.type === "truncated" && r.text === "[…]"))
+  assert.strictEqual(Model.layout(g, opts).nodes.length > 0, true)
 })
 
 test("inspectText pretty prints", () => {

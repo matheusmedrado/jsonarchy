@@ -85,6 +85,22 @@ Suggested Hyprland binding for `~/.config/hypr/bindings.conf`:
 bindd = SUPER SHIFT, J, JSONarchy, exec, omarchy-shell shell toggle io.github.matheusmedrado.jsonarchy '{}'
 ```
 
+## Limits
+
+JSONarchy runs inside the long-lived shell process, so every way in is
+bounded before anything is parsed:
+
+| Input | Limit | Behaviour over the limit |
+|-------|-------|--------------------------|
+| File (`Ctrl+O`, drop, `file` payload) | 1 MiB, regular files only | Rejected by `bin/read-bounded.sh` before it is opened: devices such as `/dev/zero`, FIFOs, directories, and dangling symlinks are refused; larger files are refused by size. A 10 s timeout backs that up. |
+| Clipboard | 1 MiB | `wl-paste` output is cut one byte past the limit and rejected. |
+| `text` payload and editor contents | 1 MiB | Not parsed; the status line says why. |
+| Editor display | 512 KiB | Larger documents show the graph only. |
+| Graph | 20 000 nodes, depth 200 | Containers beyond the budget become a `{…}` / `[…]` row and the status line reports how many were cut. Over 2 500 visible nodes, deeper levels start collapsed. |
+
+The caps are single constants in `Service.qml` (`maxInputBytes`,
+`maxEditorChars`) and `Model.js` (`MAX_TOTAL_NODES`, `MAX_DEPTH`).
+
 ## Notes
 
 - Window size, layout direction, and editor visibility are remembered in
@@ -118,10 +134,11 @@ restart in `dev-reload.sh`.
 | `Overlay.qml` | Full-screen surface |
 | `components/Workspace.qml` | Shared UI: header, editor, graph, inspector, footer, help |
 | `components/GraphView.qml` | Pan/zoom viewport, edge shapes, layout tween |
-| `Model.js` | Graph building, tree layout, search (pure JS, tested) |
+| `bin/read-bounded.sh` | Bounded file reader: regular files only, size cap, run as a child process |
+| `Model.js` | Graph building with node and depth budgets, tree layout, search (pure JS, tested) |
 | `components/Highlight.js` | JSON tokenizer and accent-derived palette |
 | `components/Export.js` | SVG writer |
-| `tests/` | `node tests/model.test.js`, `highlight.test.js`, `export.test.js` |
+| `tests/` | `node tests/model.test.js`, `highlight.test.js`, `export.test.js`, `read-bounded.test.js` |
 
 ## License
 
